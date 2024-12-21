@@ -29,6 +29,8 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Timers;
 using System.Windows.Threading;
+using System.Web;
+using System.Data;
 
 
 namespace ScreenCapture
@@ -139,60 +141,48 @@ namespace ScreenCapture
         }
         #endregion
 
-        private void StartScreenCapture()
-        {
-            startTime = DateTime.Now;
-            timer = new DispatcherTimer();
-            timer.Interval = TimeSpan.FromSeconds(1);  
-            timer.Tick += Timer_Tick;
-            timer.Start();
-        }
-
-        private void Timer_Tick(object sender, EventArgs e)
-        {
-            TimeSpan elapsedTime = DateTime.Now - startTime;
-
-            if (elapsedTime.TotalMinutes >= 1) // 如果經過時間超過1分鐘
-            {
-                timer.Stop();  // 停止定時器
-                //System.Windows.MessageBox.Show("已達到1分鐘，停止擷取螢幕。");
-            }
-            else
-            {
-                CaptureScreen();  // 繼續擷取螢幕
-            }
-        }
-
         private void CaptureScreen()
         {
-            try
+            Task.Run(() =>
             {
-                // 擷取螢幕畫面
-                System.Drawing.Rectangle screenSize = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
-                using (Bitmap bitmap = new Bitmap(screenSize.Width, screenSize.Height))
+                try
                 {
-                    using (Graphics g = Graphics.FromImage(bitmap))
+                    while (true)
                     {
-                        g.CopyFromScreen(screenSize.X, screenSize.Y, 0, 0, screenSize.Size);
-                        System.Drawing.Point cursorPosition = System.Windows.Forms.Cursor.Position;
+                        // 擷取螢幕畫面
+                        System.Drawing.Rectangle screenSize = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
+                        using (Bitmap bitmap = new Bitmap(screenSize.Width, screenSize.Height))
+                        {
+                            using (Graphics g = Graphics.FromImage(bitmap))
+                            {
+                                g.CopyFromScreen(screenSize.X, screenSize.Y, 0, 0, screenSize.Size);
+                                System.Drawing.Point cursorPosition = System.Windows.Forms.Cursor.Position;
 
-                        // 繪製滑鼠圖標到擷取的螢幕畫面上
-                        System.Windows.Forms.Cursor cursor = System.Windows.Forms.Cursors.Default;
-                        System.Drawing.Rectangle cursorBounds = new System.Drawing.Rectangle(cursorPosition, cursor.Size);
-                        cursor.Draw(g, cursorBounds);
+                                //繪製滑鼠圖標到擷取的螢幕畫面上
+                                System.Windows.Forms.Cursor cursor = System.Windows.Forms.Cursors.Default;
+                                System.Drawing.Rectangle cursorBounds = new System.Drawing.Rectangle(cursorPosition, cursor.Size);
+                                cursor.Draw(g, cursorBounds);
+                            }
+                            Dispatcher.Invoke(() =>
+                            {
+                                Display_Windows.SizeMode = PictureBoxSizeMode.Zoom;
+                                Display_Windows.Image = bitmap;
+                            });
+                            // 根據當前時間進行命名
+                            //string fileName = System.IO.Path.Combine(@"E:\DIP Temp\Image Temp", $"Screenshot_{DateTime.Now:yyyyMMdd_HHmmss}.png");
+                            // 儲存圖片
+                            //bitmap.Save(fileName, ImageFormat.Png);
+                            Thread.Sleep(1000);
+                        }
                     }
-
-                    // 根據當前時間進行命名
-                    string fileName = System.IO.Path.Combine(@"E:\DIP Temp\Image Temp", $"Screenshot_{DateTime.Now:yyyyMMdd_HHmmss}.png");
-
-                    // 儲存圖片
-                    bitmap.Save(fileName, ImageFormat.Png);
                 }
-            }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show($"擷取螢幕時發生錯誤: {ex.Message}");
-            }
+                catch (Exception ex)
+                {
+                    System.Windows.MessageBox.Show($"擷取螢幕時發生錯誤: {ex.Message}");
+                }
+            });
+
+            
         }
         #endregion
 
@@ -217,7 +207,7 @@ namespace ScreenCapture
             {
                 case nameof(Demo):
                     {
-                        StartScreenCapture();
+                        CaptureScreen();
                         break;
                     }
             }
